@@ -50,6 +50,10 @@ if ($isWin) {
   P os.release $(if ($u -eq 'Darwin') { sw_vers -productVersion } else { uname -r })
   $m = (uname -m); $archMap = @{ x86_64 = 'x64'; amd64 = 'x64'; aarch64 = 'arm64' }
   P os.arch $(if ($archMap[$m]) { $archMap[$m] } else { $m })
+  if (Get-Command ldd -ErrorAction SilentlyContinue) {
+    $l = ((ldd --version 2>&1) | Out-String)
+    if ($l -match 'musl') { P os.libc ("musl " + (Ver $l)) } elseif ($l -match 'GLIBC|GNU') { P os.libc ("glibc " + (Ver (($l -split "`n")[0]))) }
+  }
 }
 P os.shell ("powershell " + $PSVersionTable.PSVersion.ToString())
 # system code page (65001 = "Use Unicode UTF-8" is on); the console's own page changes with redirection
@@ -95,10 +99,13 @@ foreach ($f in 'package-lock.json npm-shrinkwrap.json pnpm-lock.yaml yarn.lock b
 if (git rev-parse --git-dir 2>$null) {
   P git.head (git rev-parse HEAD)
   P git.branch (git rev-parse --abbrev-ref HEAD)
-  $st = @(git status --porcelain)
-  P git.dirty @($st | Where-Object { $_ -match '^ ?[MADRCU]' }).Count
-  P git.untracked @($st | Where-Object { $_ -match '^\?\?' }).Count
-  if ($st.Count) { P git.changed_files ((@($st | Select-Object -First 15) | ForEach-Object { $_.Substring(3) }) -join ',') }
+  # untracked files that are still empty are this script's own output (fingerprint.ps1 > out.txt)
+  $ch = @(git status --porcelain --untracked-files=no | Where-Object { $_ } | ForEach-Object { $_.Substring(3) })
+  $ut = @(git ls-files --others --exclude-standard | Where-Object { $_ -and (Test-Path $_ -PathType Leaf) -and (Get-Item $_).Length -gt 0 })
+  P git.dirty $ch.Count
+  P git.untracked $ut.Count
+  $allCh = @($ch + $ut | Select-Object -First 15)
+  if ($allCh.Count) { P git.changed_files ($allCh -join ',') }
   foreach ($k in 'core.autocrlf', 'core.eol', 'core.filemode', 'core.ignorecase', 'core.symlinks') {
     $v = (git config --get $k); P "git.$k" $(if ($v) { $v } else { 'unset' })
   }

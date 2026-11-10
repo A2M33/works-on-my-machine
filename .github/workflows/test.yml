@@ -18,30 +18,37 @@ jobs:
         if: runner.os != 'Windows'
         shell: bash
         run: |
-          sh skills/works-on-my-machine/scripts/fingerprint.sh --label ci-sh > sh.txt
-          node skills/works-on-my-machine/scripts/compare.mjs --decode sh.txt > sh-facts.txt
-          grep -q '^tool.node.version' sh-facts.txt
-          grep -q '^git.head' sh-facts.txt
-          grep -q '^os.arch' sh-facts.txt
-          cat sh.txt
+          sh skills/works-on-my-machine/scripts/fingerprint.sh --label ci-sh > "$RUNNER_TEMP/sh.txt"
+          node skills/works-on-my-machine/scripts/compare.mjs --decode "$RUNNER_TEMP/sh.txt" > "$RUNNER_TEMP/sh-facts.txt"
+          grep -q '^tool.node.version' "$RUNNER_TEMP/sh-facts.txt"
+          grep -q '^git.head' "$RUNNER_TEMP/sh-facts.txt"
+          grep -q '^os.arch' "$RUNNER_TEMP/sh-facts.txt"
+          cat "$RUNNER_TEMP/sh.txt"
+      - name: empty output file inside the repo is not reported as a change
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          sh skills/works-on-my-machine/scripts/fingerprint.sh --show > inside.txt
+          grep -q '^git.untracked	0$' inside.txt
+          rm inside.txt
       - name: pwsh collector
         shell: pwsh
         run: |
-          ./skills/works-on-my-machine/scripts/fingerprint.ps1 -Label ci-pwsh > ps.txt
-          node skills/works-on-my-machine/scripts/compare.mjs --decode ps.txt > ps-facts.txt
-          if (-not (Select-String '^tool.node.version' ps-facts.txt)) { throw 'no node version' }
-          if (-not (Select-String '^git.head' ps-facts.txt)) { throw 'no git head' }
-          Get-Content ps.txt
+          ./skills/works-on-my-machine/scripts/fingerprint.ps1 -Label ci-pwsh > "$env:RUNNER_TEMP/ps.txt"
+          node skills/works-on-my-machine/scripts/compare.mjs --decode "$env:RUNNER_TEMP/ps.txt" > "$env:RUNNER_TEMP/ps-facts.txt"
+          if (-not (Select-String '^tool.node.version' "$env:RUNNER_TEMP/ps-facts.txt")) { throw 'no node version' }
+          if (-not (Select-String '^git.head' "$env:RUNNER_TEMP/ps-facts.txt")) { throw 'no git head' }
+          Get-Content "$env:RUNNER_TEMP/ps.txt"
       - name: Windows PowerShell 5.1 collector
         if: runner.os == 'Windows'
-        shell: powershell
+        shell: cmd
         run: |
-          powershell -NoProfile -ExecutionPolicy Bypass -File skills/works-on-my-machine/scripts/fingerprint.ps1 -Label ci-ps51 > ps51.txt
-          node skills/works-on-my-machine/scripts/compare.mjs --decode ps51.txt | Select-String '^os.name'
+          powershell -NoProfile -ExecutionPolicy Bypass -File skills\works-on-my-machine\scripts\fingerprint.ps1 -Label ci-ps51 > "%RUNNER_TEMP%\ps51.txt" || exit /b 1
+          node skills\works-on-my-machine\scripts\compare.mjs --decode "%RUNNER_TEMP%\ps51.txt" | findstr /b "os.name git.head tool.node.version" || exit /b 1
       - name: same machine, two collectors, no high findings
         if: runner.os != 'Windows'
         shell: bash
         run: |
-          node skills/works-on-my-machine/scripts/compare.mjs sh.txt ps.txt --all
-          node skills/works-on-my-machine/scripts/compare.mjs sh.txt ps.txt --json > r.json
-          node -e 'const r=require("./r.json"); const hi=r.findings.filter(f=>f.score>=80); if(hi.length){console.error(hi); process.exit(1)}'
+          node skills/works-on-my-machine/scripts/compare.mjs "$RUNNER_TEMP/sh.txt" "$RUNNER_TEMP/ps.txt" --all
+          node skills/works-on-my-machine/scripts/compare.mjs "$RUNNER_TEMP/sh.txt" "$RUNNER_TEMP/ps.txt" --json > "$RUNNER_TEMP/r.json"
+          node -e 'const r=require(process.argv[1]); const hi=r.findings.filter(f=>f.score>=80); if(hi.length){console.error(hi); process.exit(1)}' "$RUNNER_TEMP/r.json"

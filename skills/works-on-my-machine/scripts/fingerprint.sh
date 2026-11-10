@@ -115,10 +115,13 @@ done
 if git rev-parse --git-dir >/dev/null 2>&1; then
   p git.head "$(git rev-parse HEAD 2>/dev/null)"
   p git.branch "$(git rev-parse --abbrev-ref HEAD 2>/dev/null)"
-  st=$(git status --porcelain 2>/dev/null)
-  p git.dirty "$(printf '%s' "$st" | grep -c '^ \{0,1\}[MADRCU]')"
-  p git.untracked "$(printf '%s' "$st" | grep -c '^??')"
-  [ -n "$st" ] && p git.changed_files "$(printf '%s\n' "$st" | head -n 15 | cut -c4- | tr '\n' ',' | sed 's/,$//')"
+  # untracked files that are still empty are this script's own output (sh fingerprint.sh > out.txt)
+  ch=$(git status --porcelain --untracked-files=no 2>/dev/null | cut -c4-)
+  ut=$(git ls-files --others --exclude-standard 2>/dev/null | while read -r f; do [ -s "$f" ] && printf '%s\n' "$f"; done)
+  p git.dirty "$(printf '%s' "$ch" | grep -c .)"
+  p git.untracked "$(printf '%s' "$ut" | grep -c .)"
+  all_ch=$(printf '%s\n%s\n' "$ch" "$ut" | grep . | head -n 15 | tr '\n' ',' | sed 's/,$//')
+  [ -n "$all_ch" ] && p git.changed_files "$all_ch"
   for k in core.autocrlf core.eol core.filemode core.ignorecase core.symlinks; do
     p "git.$k" "$(git config --get "$k" 2>/dev/null || echo unset)"
   done
