@@ -1,6 +1,10 @@
 {
   "name": "a2m33",
-  "owner": { "name": "A2M33", "url": "https://github.com/A2M33" },
+  "description": "Claude Code plugins by A2M33",
+  "owner": {
+    "name": "A2M33",
+    "url": "https://github.com/A2M33"
+  },
   "plugins": [
     {
       "name": "works-on-my-machine",
