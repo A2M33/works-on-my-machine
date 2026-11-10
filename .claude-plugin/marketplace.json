@@ -1,0 +1,12 @@
+{
+  "name": "a2m33",
+  "owner": { "name": "A2M33", "url": "https://github.com/A2M33" },
+  "plugins": [
+    {
+      "name": "works-on-my-machine",
+      "source": "./",
+      "description": "Find out why a project works on one machine and fails on another: fingerprint both, diff, ranked causes with fixes.",
+      "version": "1.0.0"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "name": "works-on-my-machine",
+  "version": "1.0.0",
+  "description": "Find out why a project works on one machine and fails on another: fingerprint both, diff, ranked causes with fixes.",
+  "author": { "name": "A2M33", "url": "https://github.com/A2M33" },
+  "repository": "https://github.com/A2M33/works-on-my-machine",
+  "license": "MIT",
+  "keywords": ["debugging", "environment", "ci", "onboarding", "devops"]
+}

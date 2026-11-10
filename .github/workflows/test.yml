@@ -1,0 +1,47 @@
+name: test
+on: [push, pull_request, workflow_dispatch]
+
+jobs:
+  collectors:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: unit tests
+        run: node --test tests/compare.test.mjs
+      - name: sh collector
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          sh skills/works-on-my-machine/scripts/fingerprint.sh --label ci-sh > sh.txt
+          node skills/works-on-my-machine/scripts/compare.mjs --decode sh.txt > sh-facts.txt
+          grep -q '^tool.node.version' sh-facts.txt
+          grep -q '^git.head' sh-facts.txt
+          grep -q '^os.arch' sh-facts.txt
+          cat sh.txt
+      - name: pwsh collector
+        shell: pwsh
+        run: |
+          ./skills/works-on-my-machine/scripts/fingerprint.ps1 -Label ci-pwsh > ps.txt
+          node skills/works-on-my-machine/scripts/compare.mjs --decode ps.txt > ps-facts.txt
+          if (-not (Select-String '^tool.node.version' ps-facts.txt)) { throw 'no node version' }
+          if (-not (Select-String '^git.head' ps-facts.txt)) { throw 'no git head' }
+          Get-Content ps.txt
+      - name: Windows PowerShell 5.1 collector
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File skills/works-on-my-machine/scripts/fingerprint.ps1 -Label ci-ps51 > ps51.txt
+          node skills/works-on-my-machine/scripts/compare.mjs --decode ps51.txt | Select-String '^os.name'
+      - name: same machine, two collectors, no high findings
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          node skills/works-on-my-machine/scripts/compare.mjs sh.txt ps.txt --all
+          node skills/works-on-my-machine/scripts/compare.mjs sh.txt ps.txt --json > r.json
+          node -e 'const r=require("./r.json"); const hi=r.findings.filter(f=>f.score>=80); if(hi.length){console.error(hi); process.exit(1)}'
