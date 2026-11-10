@@ -9,7 +9,7 @@ and pastes back a single line. Claude diffs both machines and hands you the like
 in order, each with the command that fixes it.
 
 ```
-## Works on ali's machine. Why not on sara's?
+## Works on ali, fails on sara
 
 ali: Windows x64  |  sara: Windows x64  |  same commit
 

@@ -52,9 +52,9 @@ function fromGhRun(run, job, repo) {
   }
   if (!found.length) throw new Error(`run ${id} has no WOMM1: line. Add the fingerprint step to the workflow (see references/ci.md) and re-run it.`);
   const pick = job ? found.find((f) => f.job.includes(job)) : found[found.length - 1];
-  if (!pick) throw new Error(`no fingerprint from a job matching "${job}". Jobs with one: ${found.map((f) => f.job).join(", ")}`);
+  if (!pick) throw new Error(`no fingerprint from a job matching "${job}". Jobs with one: ${[...new Set(found.map((f) => f.job))].join(", ")}`);
   const facts = decode(pick.blob);
-  facts.set("meta.label", `CI (${pick.job})`);
+  facts.set("meta.label", `CI ${pick.job}`);
   return { facts, jobs: found.map((f) => f.job) };
 }
 
@@ -313,7 +313,7 @@ function fixRuntime(tool, spec, win, file) {
 export function render(r, all = false) {
   const top = r.findings.filter((f) => f.score >= 30);
   const show = all ? r.findings : top.slice(0, 5);
-  const lines = [`## Works on ${r.works}'s machine. Why not on ${r.broken}'s?`, "",
+  const lines = [`## Works on ${r.works}, fails on ${r.broken}`, "",
     `${r.works}: ${r.worksPlatform}  |  ${r.broken}: ${r.brokenPlatform}  |  ${r.sameCommit ? "same commit" : "commit: see below"}`, ""];
   if (!show.length) lines.push("No meaningful difference found. The cause is probably outside what a fingerprint sees (data, network, permissions, hardware).");
   show.forEach((f, i) => {
